@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0a0f">
+<title>Solar PV Monitor</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #13131a;
+  --surface2: #1c1c26;
+  --border: rgba(255,255,255,0.07);
+  --text: #f0f0f8;
+  --muted: rgba(240,240,248,0.45);
+  --hint: rgba(240,240,248,0.2);
+  --green: #22d37a;
+  --green-dim: rgba(34,211,122,0.12);
+  --amber: #f59e0b;
+  --amber-dim: rgba(245,158,11,0.12);
+  --red: #ef4444;
+  --red-dim: rgba(239,68,68,0.12);
+  --blue: #60a5fa;
+  --blue-dim: rgba(96,165,250,0.12);
+  --purple: #a78bfa;
+  --font-mono: 'Space Mono', monospace;
+  --font: 'DM Sans', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;overscroll-behavior:none}
+.app{display:flex;flex-direction:column;height:100vh;max-width:430px;margin:0 auto;position:relative}
+
+/* Header */
+.header{padding:16px 20px 12px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.header-left{}
+.header-title{font-size:17px;font-weight:600;letter-spacing:-.3px}
+.header-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.header-right{display:flex;align-items:center;gap:10px}
+.pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+
+/* Status banner */
+.banner{padding:10px 20px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;flex-shrink:0;transition:all .3s}
+.banner-icon{font-size:16px}
+
+/* Scrollable content */
+.content{flex:1;overflow-y:auto;padding:16px 16px 80px;display:none}
+.content.active{display:block}
+
+/* Metric grid */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.grid1{margin-bottom:14px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px}
+.card-label{font-size:11px;color:var(--muted);font-weight:500;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.card-value{font-family:var(--font-mono);font-size:26px;font-weight:700;line-height:1}
+.card-unit{font-size:13px;font-weight:400;color:var(--muted);margin-left:3px}
+.card-bar{height:3px;background:var(--border);border-radius:2px;margin-top:10px;overflow:hidden}
+.card-fill{height:100%;border-radius:2px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+
+/* PR ring */
+.pr-wrap{display:flex;align-items:center;gap:20px;padding:16px 20px}
+.ring-container{position:relative;width:90px;height:90px;flex-shrink:0}
+.ring-container svg{transform:rotate(-90deg)}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-val{font-family:var(--font-mono);font-size:20px;font-weight:700}
+.ring-label{font-size:9px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.pr-info{}
+.pr-title{font-size:15px;font-weight:600;margin-bottom:4px}
+.pr-desc{font-size:12px;color:var(--muted);line-height:1.5}
+
+/* Section labels */
+.section-title{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;margin-top:4px}
+
+/* Energy row */
+.energy-row{display:flex;justify-content:space-between;align-items:center}
+.energy-item{text-align:center}
+.energy-val{font-family:var(--font-mono);font-size:20px;font-weight:700}
+.energy-label{font-size:11px;color:var(--muted);margin-top:2px}
+.energy-divider{width:1px;height:40px;background:var(--border)}
+
+/* Fault cards */
+.fault-card{border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid}
+.fault-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.fault-card-name{font-size:14px;font-weight:600}
+.fault-badge{font-size:10px;padding:3px 8px;border-radius:20px;font-weight:600;letter-spacing:.03em}
+.fault-card-body{font-size:12px;line-height:1.7;color:inherit;opacity:.85}
+
+/* History */
+.history-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+.history-item:last-child{border-bottom:none}
+.history-name{font-size:13px;font-weight:500}
+.history-time{font-size:11px;color:var(--muted);margin-top:2px}
+.history-badge{font-size:10px;padding:3px 8px;border-radius:20px;font-weight:600}
+
+/* Info table */
+.info-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px}
+.info-row:last-child{border-bottom:none}
+.info-key{color:var(--muted)}
+.info-val{font-weight:500;font-family:var(--font-mono);font-size:12px}
+
+/* Empty state */
+.empty{text-align:center;padding:32px 20px;color:var(--muted)}
+.empty-icon{font-size:40px;margin-bottom:10px}
+.empty-text{font-size:13px}
+
+/* Bottom nav */
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--surface);border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom)}
+.nav-btn{padding:10px 4px 8px;background:none;border:none;color:var(--muted);font-family:var(--font);font-size:10px;font-weight:500;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:color .2s}
+.nav-btn svg{width:22px;height:22px;stroke-width:1.5;fill:none;stroke:currentColor}
+.nav-btn.active{color:var(--green)}
+.nav-btn.active svg{stroke:var(--green)}
+
+/* Refresh btn */
+.refresh-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.refresh-time{font-size:11px;color:var(--hint)}
+.refresh-btn{font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;font-family:var(--font)}
+
+/* Simulate toggle */
+.sim-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.sim-btn{font-size:11px;padding:5px 10px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;font-family:var(--font);transition:all .2s}
+.sim-btn:hover{border-color:var(--green);color:var(--green)}
+.sim-btn.active{background:var(--green-dim);border-color:var(--green);color:var(--green)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="header-title">☀️ Solar PV Monitor</div>
+      <div class="header-sub">Windynation 100W · Arusha, Tanzania</div>
+    </div>
+    <div class="header-right">
+      <div class="pulse-dot" id="live-dot"></div>
+    </div>
+  </div>
+
+  <!-- Status banner -->
+  <div class="banner" id="banner" style="background:var(--green-dim);color:var(--green)">
+    <span class="banner-icon">✓</span>
+    <span id="banner-text">System normal — all checks passed</span>
+  </div>
+
+  <!-- PAGE: LIVE -->
+  <div class="content active" id="page-live">
+    <div class="refresh-row">
+      <span class="refresh-time" id="update-time">Updating every 5 seconds</span>
+      <button class="refresh-btn" onclick="refresh()">↻ Refresh now</button>
+    </div>
+
+    <div class="section-title">Simulate fault condition</div>
+    <div class="sim-row">
+      <button class="sim-btn active" id="sim-normal" onclick="setMode('normal')">Normal</button>
+      <button class="sim-btn" id="sim-short" onclick="setMode('short')">Short circuit</button>
+      <button class="sim-btn" id="sim-open" onclick="setMode('open')">Open circuit</button>
+      <button class="sim-btn" id="sim-shade" onclick="setMode('shade')">Shading</button>
+      <button class="sim-btn" id="sim-hot" onclick="setMode('hot')">High temp</button>
+    </div>
+
+    <div class="section-title">Live readings</div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-label">⚡ Voltage</div>
+        <div class="card-value" id="v-val">--<span class="card-unit">V</span></div>
+        <div class="card-bar"><div class="card-fill" id="v-bar" style="background:var(--blue);width:0%"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-label">〜 Current</div>
+        <div class="card-value" id="i-val">--<span class="card-unit">A</span></div>
+        <div class="card-bar"><div class="card-fill" id="i-bar" style="background:var(--green);width:0%"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-label">⚙ Power</div>
+        <div class="card-value" id="p-val">--<span class="card-unit">W</span></div>
+        <div class="card-bar"><div class="card-fill" id="p-bar" style="background:var(--amber);width:0%"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-label">🌡 Temperature</div>
+        <div class="card-value" id="t-val">--<span class="card-unit">°C</span></div>
+        <div class="card-bar"><div class="card-fill" id="t-bar" style="background:var(--red);width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="section-title">Performance ratio</div>
+    <div class="card grid1">
+      <div class="pr-wrap">
+        <div class="ring-container">
+          <svg viewBox="0 0 90 90" width="90" height="90">
+            <circle cx="45" cy="45" r="36" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="7"/>
+            <circle cx="45" cy="45" r="36" fill="none" id="pr-ring" stroke="var(--green)" stroke-width="7" stroke-linecap="round" stroke-dasharray="226" stroke-dashoffset="226" style="transition:stroke-dashoffset .8s,stroke .5s"/>
+          </svg>
+          <div class="ring-center">
+            <div class="ring-val" id="pr-val">--%</div>
+            <div class="ring-label">PR</div>
+          </div>
+        </div>
+        <div class="pr-info">
+          <div class="pr-title" id="pr-title">Waiting...</div>
+          <div class="pr-desc" id="pr-desc">Calculating performance ratio from live sensor data</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Daily energy summary</div>
+    <div class="card">
+      <div class="energy-row">
+        <div class="energy-item">
+          <div class="energy-val" id="e-val" style="color:var(--green)">--</div>
+          <div class="energy-label">kWh today</div>
+        </div>
+        <div class="energy-divider"></div>
+        <div class="energy-item">
+          <div class="energy-val" id="pk-val" style="color:var(--amber)">--</div>
+          <div class="energy-label">W peak power</div>
+        </div>
+        <div class="energy-divider"></div>
+        <div class="energy-item">
+          <div class="energy-val" id="irr-val" style="color:var(--blue)">--</div>
+          <div class="energy-label">% irradiance</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: FAULTS -->
+  <div class="content" id="page-faults">
+    <div class="section-title">Active fault</div>
+    <div id="active-fault-area">
+      <div class="empty">
+        <div class="empty-icon">✓</div>
+        <div class="empty-text">No active faults detected<br>System is operating normally</div>
+      </div>
+    </div>
+    <div class="section-title" style="margin-top:8px">Fault history</div>
+    <div class="card">
+      <div class="history-item">
+        <div><div class="history-name">Partial shading</div><div class="history-time">2026-05-17 at 14:32</div></div>
+        <span class="history-badge" style="background:var(--amber-dim);color:var(--amber)">Resolved</span>
+      </div>
+      <div class="history-item">
+        <div><div class="history-name">High temperature</div><div class="history-time">2026-05-16 at 11:15</div></div>
+        <span class="history-badge" style="background:var(--amber-dim);color:var(--amber)">Resolved</span>
+      </div>
+      <div class="history-item">
+        <div><div class="history-name">Open circuit</div><div class="history-time">2026-05-10 at 09:04</div></div>
+        <span class="history-badge" style="background:var(--green-dim);color:var(--green)">Resolved</span>
+      </div>
+      <div class="history-item">
+        <div><div class="history-name">Short circuit</div><div class="history-time">2026-04-28 at 16:50</div></div>
+        <span class="history-badge" style="background:var(--green-dim);color:var(--green)">Resolved</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: RECOMMENDATIONS -->
+  <div class="content" id="page-recs">
+    <div class="section-title">Fault recommendations</div>
+
+    <div class="fault-card" style="background:var(--red-dim);border-color:rgba(239,68,68,0.25);color:var(--red)">
+      <div class="fault-card-header">
+        <div class="fault-card-name">⚡ Short circuit</div>
+        <span class="fault-badge" style="background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,0.3)">URGENT</span>
+      </div>
+      <div class="fault-card-body">1. Switch OFF system immediately<br>2. Do NOT touch wiring or panels<br>3. Check for damaged or melted cables<br>4. Inspect junction boxes for burn marks<br>5. Call a certified electrician NOW</div>
+    </div>
+
+    <div class="fault-card" style="background:var(--amber-dim);border-color:rgba(245,158,11,0.25);color:var(--amber)">
+      <div class="fault-card-header">
+        <div class="fault-card-name">🔌 Open circuit</div>
+        <span class="fault-badge" style="background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,158,11,0.3)">MODERATE</span>
+      </div>
+      <div class="fault-card-body">1. Check all MC4 connectors and plugs<br>2. Check 8A series fuse — replace if blown<br>3. Look for broken or disconnected wires<br>4. Test each panel with a multimeter<br>5. Call installer if issue persists</div>
+    </div>
+
+    <div class="fault-card" style="background:var(--blue-dim);border-color:rgba(96,165,250,0.25);color:var(--blue)">
+      <div class="fault-card-header">
+        <div class="fault-card-name">🌤 Partial shading</div>
+        <span class="fault-badge" style="background:var(--blue-dim);color:var(--blue);border:1px solid rgba(96,165,250,0.3)">LOW</span>
+      </div>
+      <div class="fault-card-body">1. Clean panels with water and soft cloth<br>2. Check for dust or bird droppings<br>3. Check for shadow from trees or buildings<br>4. Trim any branches blocking sunlight<br>5. Schedule inspection if problem persists</div>
+    </div>
+
+    <div class="fault-card" style="background:var(--red-dim);border-color:rgba(239,68,68,0.25);color:var(--red)">
+      <div class="fault-card-header">
+        <div class="fault-card-name">⚠ Ground fault</div>
+        <span class="fault-badge" style="background:var(--red-dim);color:var(--red);border:1px solid rgba(239,68,68,0.3)">URGENT</span>
+      </div>
+      <div class="fault-card-body">1. Switch OFF inverter immediately<br>2. Isolate PV array from inverter<br>3. Do NOT touch panels or wiring<br>4. Check insulation on all cables<br>5. Call certified electrician URGENTLY</div>
+    </div>
+
+    <div class="fault-card" style="background:var(--amber-dim);border-color:rgba(245,158,11,0.25);color:var(--amber)">
+      <div class="fault-card-header">
+        <div class="fault-card-name">🔧 Inverter fault</div>
+        <span class="fault-badge" style="background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,158,11,0.3)">MODERATE</span>
+      </div>
+      <div class="fault-card-body">1. Check inverter display for error code<br>2. Switch inverter OFF and wait 30 seconds<br>3. Switch inverter back ON<br>4. Check DC and AC connections<br>5. Call installer if fault persists</div>
+    </div>
+  </div>
+
+  <!-- PAGE: INFO -->
+  <div class="content" id="page-info">
+    <div class="section-title">Panel nameplate</div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="info-row"><span class="info-key">Manufacturer</span><span class="info-val">Windynation</span></div>
+      <div class="info-row"><span class="info-key">Model</span><span class="info-val">SOL-100M-01</span></div>
+      <div class="info-row"><span class="info-key">Type</span><span class="info-val">100W Monocrystalline</span></div>
+      <div class="info-row"><span class="info-key">Pmax</span><span class="info-val" style="color:var(--amber)">100 W</span></div>
+      <div class="info-row"><span class="info-key">Voc</span><span class="info-val">21.45 V</span></div>
+      <div class="info-row"><span class="info-key">Vmp</span><span class="info-val">18.15 V</span></div>
+      <div class="info-row"><span class="info-key">Isc</span><span class="info-val">6.09 A</span></div>
+      <div class="info-row"><span class="info-key">Imp</span><span class="info-val">5.51 A</span></div>
+      <div class="info-row"><span class="info-key">Fuse</span><span class="info-val">8 A</span></div>
+      <div class="info-row"><span class="info-key">NOCT</span><span class="info-val">48 °C</span></div>
+    </div>
+    <div class="section-title">Fault thresholds</div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="info-row"><span class="info-key">VOLT_LOW</span><span class="info-val" style="color:var(--red)">10.0 V (55% Vmp)</span></div>
+      <div class="info-row"><span class="info-key">VOLT_HIGH</span><span class="info-val" style="color:var(--red)">24.0 V (110% Voc)</span></div>
+      <div class="info-row"><span class="info-key">CURR_LOW</span><span class="info-val" style="color:var(--red)">0.30 A (5% Isc)</span></div>
+      <div class="info-row"><span class="info-key">CURR_HIGH</span><span class="info-val" style="color:var(--red)">6.70 A (110% Isc)</span></div>
+      <div class="info-row"><span class="info-key">TEMP_WARN</span><span class="info-val" style="color:var(--amber)">50.0 °C</span></div>
+      <div class="info-row"><span class="info-key">TEMP_MAX</span><span class="info-val" style="color:var(--red)">60.0 °C</span></div>
+      <div class="info-row"><span class="info-key">PR_DROP</span><span class="info-val" style="color:var(--amber)">30%</span></div>
+    </div>
+    <div class="section-title">Control system</div>
+    <div class="card">
+      <div class="info-row"><span class="info-key">Microcontroller</span><span class="info-val">Arduino UNO</span></div>
+      <div class="info-row"><span class="info-key">Voltage sensor</span><span class="info-val">Voltage divider</span></div>
+      <div class="info-row"><span class="info-key">Current sensor</span><span class="info-val">ACS712 20A</span></div>
+      <div class="info-row"><span class="info-key">Temp sensor</span><span class="info-val">NTC module</span></div>
+      <div class="info-row"><span class="info-key">Light sensor</span><span class="info-val">Photoresistor</span></div>
+      <div class="info-row"><span class="info-key">GSM module</span><span class="info-val">SIM800L</span></div>
+      <div class="info-row"><span class="info-key">Display</span><span class="info-val">LCD 16x2 I2C</span></div>
+      <div class="info-row"><span class="info-key">College</span><span class="info-val">ATC REU 08105</span></div>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <nav class="nav">
+    <button class="nav-btn active" id="nav-live" onclick="showPage('live')">
+      <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0"/><path d="M12 8v4l2 2"/></svg>
+      Live
+    </button>
+    <button class="nav-btn" id="nav-faults" onclick="showPage('faults')">
+      <svg viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Faults
+    </button>
+    <button class="nav-btn" id="nav-recs" onclick="showPage('recs')">
+      <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Tips
+    </button>
+    <button class="nav-btn" id="nav-info" onclick="showPage('info')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Info
+    </button>
+  </nav>
+</div>
+
+<script>
+const pages = ['live','faults','recs','info'];
+function showPage(p) {
+  pages.forEach(x => {
+    document.getElementById('page-'+x).classList.toggle('active', x===p);
+    document.getElementById('nav-'+x).classList.toggle('active', x===p);
+  });
+}
+
+let mode = 'normal';
+let energy = 0.0;
+let peak = 0;
+let ticker = 0;
+
+const modes = {
+  normal: {v:[15,19],  i:[3,5.5], t:[30,48], irr:[400,800]},
+  short:  {v:[2,6],    i:[6.8,8], t:[40,55], irr:[300,600]},
+  open:   {v:[14,20],  i:[0,0.2], t:[35,50], irr:[300,700]},
+  shade:  {v:[12,16],  i:[1,2.5], t:[35,48], irr:[150,300]},
+  hot:    {v:[14,18],  i:[3,5],   t:[62,75], irr:[500,900]}
+};
+
+function rand(min, max){ return +(min + Math.random()*(max-min)).toFixed(2); }
+
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.sim-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sim-'+m).classList.add('active');
+  refresh();
+}
+
+function refresh() {
+  const cfg = modes[mode];
+  const v = rand(cfg.v[0], cfg.v[1]);
+  const i = rand(cfg.i[0], cfg.i[1]);
+  const p = +(v * i).toFixed(1);
+  const t = rand(cfg.t[0], cfg.t[1]);
+  const irr = Math.round(rand(cfg.irr[0], cfg.irr[1]));
+  const iRatio = irr / 1023;
+  const expectedP = 100 * iRatio;
+  const pr = expectedP > 0 ? Math.min(100, Math.round((p / expectedP) * 100)) : 0;
+
+  energy = +(energy + p / 720000).toFixed(4);
+  if(p > peak) peak = +p.toFixed(1);
+
+  // Detect fault
+  let fault = 0;
+  let faultName = '';
+  let faultColor = 'var(--red)';
+  let faultDim = 'var(--red-dim)';
+  if(v < 10 && i > 6.7){ fault=1; faultName='Short circuit'; }
+  else if(i < 0.3 && v > 10 && iRatio > 0.2){ fault=2; faultName='Open circuit'; faultColor='var(--amber)'; faultDim='var(--amber-dim)'; }
+  else if(expectedP>0 && ((expectedP-p)/expectedP*100)>30 && p>1){ fault=3; faultName='Partial shading'; faultColor='var(--blue)'; faultDim='var(--blue-dim)'; }
+  else if(v<2 && i>0.5){ fault=5; faultName='Ground fault'; }
+  else if(v>10 && i>0.3 && p<1){ fault=6; faultName='Inverter fault'; faultColor='var(--amber)'; faultDim='var(--amber-dim)'; }
+  const tempWarn = t > 60;
+
+  // Update readings
+  document.getElementById('v-val').innerHTML = v+'<span class="card-unit">V</span>';
+  document.getElementById('i-val').innerHTML = i+'<span class="card-unit">A</span>';
+  document.getElementById('p-val').innerHTML = p+'<span class="card-unit">W</span>';
+  document.getElementById('t-val').innerHTML = t.toFixed(1)+'<span class="card-unit">°C</span>';
+  document.getElementById('v-bar').style.width = Math.min(100,(v/24)*100).toFixed(0)+'%';
+  document.getElementById('i-bar').style.width = Math.min(100,(i/8)*100).toFixed(0)+'%';
+  document.getElementById('p-bar').style.width = Math.min(100,(p/100)*100).toFixed(0)+'%';
+  document.getElementById('t-bar').style.width = Math.min(100,(t/80)*100).toFixed(0)+'%';
+  document.getElementById('t-bar').style.background = t>60?'var(--red)':t>50?'var(--amber)':'var(--green)';
+  document.getElementById('e-val').textContent = energy;
+  document.getElementById('pk-val').textContent = peak;
+  document.getElementById('irr-val').textContent = Math.round(iRatio*100);
+
+  // PR ring
+  const offset = 226 - (226 * pr / 100);
+  document.getElementById('pr-ring').style.strokeDashoffset = offset.toFixed(1);
+  const prColor = pr>=75?'var(--green)':pr>=50?'var(--amber)':'var(--red)';
+  document.getElementById('pr-ring').style.stroke = prColor;
+  document.getElementById('pr-val').textContent = pr+'%';
+  document.getElementById('pr-title').textContent = pr>=75?'Excellent performance':pr>=50?'Fair — below optimal':'Poor — check system';
+  document.getElementById('pr-desc').textContent = pr>=75?'Panel producing at rated capacity':'Power output below expected for current sunlight level';
+
+  // Banner
+  const banner = document.getElementById('banner');
+  const bannerText = document.getElementById('banner-text');
+  if(fault){
+    banner.style.background='var(--red-dim)'; banner.style.color='var(--red)';
+    bannerText.textContent = '⚠ Fault detected: '+faultName+' — check faults tab';
+  } else if(tempWarn){
+    banner.style.background='var(--amber-dim)'; banner.style.color='var(--amber)';
+    bannerText.textContent = '⚠ Warning — panel temperature critical: '+t.toFixed(1)+'°C';
+  } else {
+    banner.style.background='var(--green-dim)'; banner.style.color='var(--green)';
+    bannerText.textContent = '✓ System normal — all checks passed';
+  }
+
+  // Active fault card
+  const area = document.getElementById('active-fault-area');
+  if(fault){
+    area.innerHTML = '<div class="fault-card" style="background:'+faultDim+';border-color:rgba(255,255,255,0.1);color:'+faultColor+'"><div class="fault-card-header"><div class="fault-card-name">'+faultName+'</div><span class="fault-badge" style="background:'+faultDim+';color:'+faultColor+';border:1px solid rgba(255,255,255,0.1)">ACTIVE</span></div><div class="fault-card-body">V='+v+'V &nbsp; I='+i+'A &nbsp; P='+p+'W &nbsp; T='+t.toFixed(1)+'°C<br>PR='+pr+'% &nbsp; Irradiance='+irr+'<br><br>See Tips tab for recommended actions</div></div>';
+  } else {
+    area.innerHTML = '<div class="empty"><div class="empty-icon">✓</div><div class="empty-text">No active faults detected<br>System is operating normally</div></div>';
+  }
+
+  document.getElementById('update-time').textContent = 'Last updated: '+new Date().toLocaleTimeString();
+  ticker++;
+}
+
+refresh();
+setInterval(refresh, 5000);
+
+// Service Worker registration
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.error('SW registration failed:', err));
+  });
+}
+</script>
+</body>
+</html>
