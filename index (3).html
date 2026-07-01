@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>Solar PV Monitor — ATC</title>
+<link rel="manifest" href="manifest.json"/>
+<meta name="theme-color" content="#f59e0b"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="apple-mobile-web-app-title" content="Solar PV"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --sun:#f59e0b;--sun-light:#fef3c7;--sun-mid:#fde68a;
+  --green:#16a34a;--green-light:#dcfce7;
+  --blue:#2563eb;--blue-light:#dbeafe;
+  --red:#dc2626;--red-light:#fee2e2;
+  --orange:#ea580c;--orange-light:#ffedd5;
+  --bg:#f8fafc;--surface:#ffffff;--surface2:#f1f5f9;
+  --border:#e2e8f0;--border2:#cbd5e1;
+  --text:#0f172a;--text2:#475569;--text3:#94a3b8;
+  --shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 6px rgba(0,0,0,0.07),0 2px 4px rgba(0,0,0,0.05);
+  --radius:14px;--radius-sm:8px;
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Inter',sans-serif;
+}
+body.dark{
+  --bg:#0f172a;--surface:#1e293b;--surface2:#334155;
+  --border:#334155;--border2:#475569;
+  --text:#f1f5f9;--text2:#94a3b8;--text3:#64748b;
+  --shadow:0 1px 3px rgba(0,0,0,0.3),0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md:0 4px 6px rgba(0,0,0,0.4),0 2px 4px rgba(0,0,0,0.3);
+  --green-light:#14532d;--red-light:#450a0a;--blue-light:#1e3a5f;--sun-light:#451a03;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow:hidden;font-size:14px}
+#app{display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto;background:var(--bg);position:relative}
+
+/* HEADER */
+header{
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  padding:12px 16px;
+  padding-top:calc(12px + env(safe-area-inset-top));
+  flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:var(--shadow);
+}
+.header-left{display:flex;align-items:center;gap:10px}
+.sun-icon{
+  width:38px;height:38px;border-radius:10px;
+  background:linear-gradient(135deg,#fbbf24,#f59e0b);
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;box-shadow:0 2px 8px #f59e0b44;flex-shrink:0;
+}
+.header-title h1{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-0.3px}
+.header-title p{font-size:11px;color:var(--text2);margin-top:1px}
+.header-right{display:flex;align-items:center;gap:8px}
+.status-pill{
+  display:flex;align-items:center;gap:5px;
+  background:var(--green-light);color:var(--green);
+  border-radius:20px;padding:4px 10px;font-size:11px;font-weight:600;
+  transition:all 0.3s;
+}
+.status-pill.fault{background:var(--red-light);color:var(--red)}
+.status-pill.offline{background:var(--surface2);color:var(--text3)}
+.status-dot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* LANGUAGE TOGGLE */
+.lang-btn{
+  background:var(--surface2);border:none;border-radius:6px;
+  padding:4px 8px;font-size:11px;font-weight:600;color:var(--text2);
+  cursor:pointer;font-family:var(--sans);
+}
+/* DARK MODE BUTTON */
+.dark-btn{
+  background:var(--surface2);border:none;border-radius:6px;
+  width:30px;height:26px;font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+/* LIVE CLOCK */
+.live-clock{font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:0.5px;min-width:52px;text-align:right}
+/* GREETING BANNER */
+.greeting-bar{
+  background:linear-gradient(135deg,var(--sun),#f97316);
+  color:#fff;padding:8px 16px;font-size:12px;font-weight:600;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.greeting-bar .g-left{display:flex;align-items:center;gap:6px}
+.greeting-bar .g-right{font-size:11px;opacity:0.85;font-family:var(--mono)}
+/* SIGNAL DOTS */
+.signal-wrap{display:flex;align-items:flex-end;gap:2px;height:14px}
+.signal-wrap span{width:3px;border-radius:1px;background:var(--green);opacity:0.3;transition:all 0.5s}
+.signal-wrap span.active{opacity:1}
+.signal-wrap span:nth-child(1){height:4px}
+.signal-wrap span:nth-child(2){height:7px}
+.signal-wrap span:nth-child(3){height:10px}
+.signal-wrap span:nth-child(4){height:14px}
+/* SPARKLINE */
+.spark{display:block;margin-top:8px}
+/* ANIMATED VALUE */
+@keyframes pop{0%{transform:scale(1.15);color:var(--sun)}100%{transform:scale(1);}}
+.metric-value.updated{animation:pop 0.4s ease}
+/* CARD TREND ARROW */
+.trend{font-size:10px;position:absolute;top:10px;right:10px;font-weight:700}
+.trend.up{color:var(--green)}.trend.down{color:var(--red)}.trend.flat{color:var(--text3)}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;overflow-x:hidden;padding:14px;padding-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.content::-webkit-scrollbar{display:none}
+
+/* PAGE */
+.page{display:none}.page.active{display:block}
+
+/* SECTION LABEL */
+.section-label{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin:16px 0 8px}
+.section-label:first-child{margin-top:0}
+
+/* ALERT BANNER */
+.alert-banner{
+  background:var(--red-light);border:1px solid #fca5a5;border-radius:var(--radius-sm);
+  padding:10px 12px;margin-bottom:12px;display:none;
+  flex-direction:row;align-items:center;gap:10px;
+}
+.alert-banner.show{display:flex}
+.alert-banner .icon{font-size:18px;flex-shrink:0}
+.alert-banner .msg{font-size:12px;color:var(--red);font-weight:600;line-height:1.4}
+
+/* METRIC CARDS */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.metric-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px;
+  box-shadow:var(--shadow);position:relative;overflow:hidden;
+}
+.metric-card::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:var(--card-color,var(--sun));border-radius:var(--radius) var(--radius) 0 0;
+}
+.metric-label{font-size:10px;font-weight:600;letter-spacing:1px;color:var(--text2);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:5px}
+.metric-value{font-family:var(--mono);font-size:26px;font-weight:600;color:var(--text);line-height:1}
+.metric-unit{font-size:12px;color:var(--text3);font-family:var(--sans);margin-left:2px}
+.metric-bar{height:4px;background:var(--border);border-radius:2px;margin-top:10px;overflow:hidden}
+.metric-bar-fill{height:100%;border-radius:2px;background:var(--card-color,var(--sun));transition:width 1s ease}
+
+/* PERFORMANCE CARD */
+.perf-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:16px;
+  box-shadow:var(--shadow);display:flex;align-items:center;gap:16px;margin-bottom:12px;
+}
+.ring-wrap{position:relative;width:80px;height:80px;flex-shrink:0}
+.ring-wrap svg{transform:rotate(-90deg);width:80px;height:80px}
+.ring-bg{fill:none;stroke:var(--border2);stroke-width:7}
+.ring-fill{fill:none;stroke:var(--green);stroke-width:7;stroke-linecap:round;stroke-dasharray:220;stroke-dashoffset:27;transition:stroke-dashoffset 1.5s ease}
+.ring-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.ring-pct{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--text);line-height:1}
+.ring-sub{font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase}
+.perf-info h3{font-size:15px;font-weight:700;color:var(--green);margin-bottom:4px}
+.perf-info p{font-size:12px;color:var(--text2);line-height:1.5}
+
+/* SUMMARY CARD */
+.summary-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px;
+  box-shadow:var(--shadow);margin-bottom:12px;
+}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
+.summary-item{text-align:center;padding:8px 4px;background:var(--surface2);border-radius:var(--radius-sm)}
+.summary-val{font-family:var(--mono);font-size:17px;font-weight:700}
+.summary-lbl{font-size:9px;color:var(--text3);margin-top:3px;line-height:1.3}
+
+/* CHART CARD */
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);margin-bottom:12px}
+.chart-tabs{display:flex;gap:6px;margin-bottom:10px}
+.chart-tab{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text2);font-family:var(--sans);font-size:11px;font-weight:600;padding:7px 4px;border-radius:var(--radius-sm);cursor:pointer;transition:all 0.2s;letter-spacing:0.3px}
+.chart-tab.active{background:var(--sun);color:#fff;border-color:var(--sun);box-shadow:0 2px 6px #f59e0b44}
+.chart-pane{display:none}.chart-pane.active{display:block}
+canvas{width:100%!important;display:block;margin-top:8px}
+
+/* LAST UPDATED */
+.last-updated{text-align:center;font-size:10px;color:var(--text3);padding:6px 0;font-family:var(--mono)}
+
+/* FAULT CARDS */
+.fault-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;
+  display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);
+}
+.fault-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.fault-dot.ok{background:var(--green)}
+.fault-dot.warn{background:var(--sun)}
+.fault-dot.err{background:var(--red)}
+.fault-name{font-size:13px;font-weight:600;color:var(--text)}
+.fault-status{font-size:11px;color:var(--text2);margin-top:2px}
+
+/* TIP CARDS */
+.tip-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;display:flex;gap:12px;box-shadow:var(--shadow)}
+.tip-icon{font-size:22px;flex-shrink:0;margin-top:2px}
+.tip-title{font-size:13px;font-weight:700;color:var(--sun);margin-bottom:3px}
+.tip-text{font-size:12px;color:var(--text2);line-height:1.5}
+
+/* INFO */
+.info-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px 14px;box-shadow:var(--shadow);margin-bottom:12px}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.info-row:last-child{border-bottom:none}
+.info-key{font-size:12px;color:var(--text2)}
+.info-val{font-size:12px;font-weight:600;color:var(--text);font-family:var(--mono)}
+
+/* HISTORY */
+.history-table{width:100%;border-collapse:collapse;font-size:11px}
+.history-table th{background:var(--surface2);color:var(--text2);font-weight:600;padding:8px 6px;text-align:left;border-bottom:2px solid var(--border);font-size:10px;letter-spacing:0.5px;text-transform:uppercase}
+.history-table td{padding:8px 6px;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px}
+.history-table tr:last-child td{border-bottom:none}
+.history-table tr:nth-child(even) td{background:var(--surface2)}
+.history-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);margin-bottom:12px;overflow-x:auto}
+.badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600}
+.badge.ok{background:var(--green-light);color:var(--green)}
+.badge.fault{background:var(--red-light);color:var(--red)}
+
+/* SETTINGS */
+.setting-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);margin-bottom:12px}
+.setting-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.setting-row:last-child{border-bottom:none}
+.setting-label{font-size:13px;font-weight:500;color:var(--text)}
+.setting-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.setting-input{
+  width:80px;border:1px solid var(--border2);border-radius:6px;
+  padding:5px 8px;font-size:12px;font-family:var(--mono);
+  color:var(--text);background:var(--surface2);text-align:right;
+}
+.save-btn{
+  width:100%;background:var(--sun);color:#fff;border:none;
+  border-radius:var(--radius-sm);padding:12px;font-size:14px;
+  font-weight:700;font-family:var(--sans);cursor:pointer;margin-top:8px;
+  box-shadow:0 2px 8px #f59e0b44;
+}
+.save-btn:active{opacity:0.85}
+
+/* BOTTOM NAV */
+nav{
+  display:flex;background:var(--surface);border-top:1px solid var(--border);
+  padding-bottom:env(safe-area-inset-bottom);flex-shrink:0;
+  box-shadow:0 -1px 3px rgba(0,0,0,0.06);
+}
+.nav-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:8px 0;border:none;background:none;
+  color:var(--text3);font-family:var(--sans);font-size:9px;font-weight:600;
+  cursor:pointer;transition:color 0.2s;gap:3px;letter-spacing:0.3px;
+}
+.nav-btn.active{color:var(--sun)}
+.nav-btn svg{width:18px;height:18px}
+
+/* INSTALL BANNER */
+#installBanner{
+  display:none;background:var(--sun-light);border-bottom:1px solid var(--sun-mid);
+  padding:10px 16px;flex-direction:row;align-items:center;gap:10px;flex-shrink:0;
+}
+#installBanner p{font-size:12px;color:var(--text);flex:1}
+#installBanner button{background:var(--sun);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-family:var(--sans);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+#dismissBanner{background:none!important;color:var(--text3)!important;padding:4px!important;font-size:16px!important}
+
+/* ABOUT / STUDENT CARDS */
+.about-hero{
+  background:linear-gradient(135deg,#f59e0b,#ea580c);
+  border-radius:var(--radius);padding:20px 16px;margin-bottom:12px;
+  color:#fff;text-align:center;box-shadow:var(--shadow-md);
+}
+.about-hero .college{font-size:11px;font-weight:600;letter-spacing:1.5px;opacity:0.85;text-transform:uppercase;margin-bottom:6px}
+.about-hero h2{font-size:17px;font-weight:700;line-height:1.3;margin-bottom:4px}
+.about-hero .module{font-size:11px;opacity:0.8;margin-bottom:12px}
+.about-hero .badge-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.about-hero .abadge{background:rgba(255,255,255,0.2);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600}
+
+.student-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;
+  box-shadow:var(--shadow);display:flex;align-items:center;gap:14px;
+}
+.student-avatar{
+  width:48px;height:48px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:700;color:#fff;flex-shrink:0;
+}
+.student-name{font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px}
+.student-role{font-size:11px;color:var(--text2);margin-bottom:4px}
+.student-contact{display:flex;flex-direction:column;gap:3px}
+.contact-row{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)}
+.contact-row a{color:var(--blue);text-decoration:none;font-family:var(--mono);font-size:11px}
+.contact-row a:active{opacity:0.7}
+
+.project-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;
+  box-shadow:var(--shadow);
+}
+.project-card h4{font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.spec-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
+.spec-row:last-child{border-bottom:none}
+.spec-key{color:var(--text2)}
+.spec-val{font-family:var(--mono);font-weight:600;color:var(--text)}
+.supervisor-card{
+  background:var(--blue-light);border:1px solid #bfdbfe;
+  border-radius:var(--radius);padding:12px 16px;margin-bottom:10px;
+  display:flex;align-items:center;gap:12px;
+}
+.supervisor-card .icon{font-size:28px}
+.supervisor-card h4{font-size:13px;font-weight:700;color:var(--blue);margin-bottom:2px}
+.supervisor-card p{font-size:11px;color:var(--text2)}
+  background:var(--surface2);border-bottom:1px solid var(--border);
+  text-align:center;padding:5px;font-size:11px;color:var(--text3);
+  display:none;flex-shrink:0;
+}
+.offline-strip.show{display:block}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <div class="sun-icon">☀️</div>
+    <div class="header-title">
+      <h1 id="appTitle">Solar PV Monitor</h1>
+      <p id="appSub">Solarborn 120W · Arusha Technical College</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="signal-wrap" id="signalWrap" title="Data signal">
+      <span id="s1"></span><span id="s2"></span><span id="s3"></span><span id="s4"></span>
+    </div>
+    <button class="dark-btn" id="darkBtn" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
+    <button class="lang-btn" id="langBtn" onclick="toggleLang()">SW</button>
+    <div class="status-pill" id="statusPill">
+      <div class="status-dot"></div>
+      <span id="statusText">Live</span>
+    </div>
+  </div>
+</header>
+
+<!-- GREETING BAR -->
+<div class="greeting-bar" id="greetingBar">
+  <div class="g-left"><span id="greetIcon">☀️</span><span id="greetText">Good morning, Elisha!</span></div>
+  <div class="g-right" id="liveClock">--:--:--</div>
+</div>
+
+<!-- OFFLINE STRIP -->
+<div class="offline-strip" id="offlineStrip" id="offlineStrip">⚠ Waiting for data from device...</div>
+
+<!-- INSTALL BANNER -->
+<div id="installBanner">
+  <p>📲 <span id="installMsg">Install as app on your phone</span></p>
+  <button id="installBtn">Install</button>
+  <button id="dismissBanner">✕</button>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- ── LIVE PAGE ── -->
+  <div class="page active" id="page-live">
+    <div class="alert-banner" id="alertBanner">
+      <div class="icon">⚠️</div>
+      <div class="msg" id="alertMsg">Fault detected</div>
+    </div>
+
+    <p class="section-label" id="lbl-live-readings">Live Readings</p>
+    <div class="grid-2">
+      <div class="metric-card" style="--card-color:#2563eb">
+        <div class="trend flat" id="trend-v">→</div>
+        <div class="metric-label">⚡ <span data-en="Voltage" data-sw="Volti">Voltage</span></div>
+        <div class="metric-value" id="voltage">—<span class="metric-unit">V</span></div>
+        <div class="metric-bar"><div class="metric-bar-fill" id="voltageBar" style="width:0%"></div></div>
+        <canvas class="spark" id="spark-v" height="28"></canvas>
+      </div>
+      <div class="metric-card" style="--card-color:#16a34a">
+        <div class="trend flat" id="trend-a">→</div>
+        <div class="metric-label">∿ <span data-en="Current" data-sw="Mkondo">Current</span></div>
+        <div class="metric-value" id="current">—<span class="metric-unit">A</span></div>
+        <div class="metric-bar"><div class="metric-bar-fill" id="currentBar" style="width:0%"></div></div>
+        <canvas class="spark" id="spark-a" height="28"></canvas>
+      </div>
+      <div class="metric-card" style="--card-color:#f59e0b">
+        <div class="trend flat" id="trend-w">→</div>
+        <div class="metric-label">◎ <span data-en="Power" data-sw="Nguvu">Power</span></div>
+        <div class="metric-value" id="power">—<span class="metric-unit">W</span></div>
+        <div class="metric-bar"><div class="metric-bar-fill" id="powerBar" style="width:0%"></div></div>
+        <canvas class="spark" id="spark-w" height="28"></canvas>
+      </div>
+      <div class="metric-card" style="--card-color:#dc2626">
+        <div class="trend flat" id="trend-t">→</div>
+        <div class="metric-label">🌡 <span data-en="Temperature" data-sw="Joto">Temperature</span></div>
+        <div class="metric-value" id="temp">—<span class="metric-unit">°C</span></div>
+        <div class="metric-bar"><div class="metric-bar-fill" id="tempBar" style="width:0%"></div></div>
+        <canvas class="spark" id="spark-t" height="28"></canvas>
+      </div>
+    </div>
+
+    <p class="section-label" id="lbl-perf">Performance Ratio</p>
+    <div class="perf-card">
+      <div class="ring-wrap">
+        <svg viewBox="0 0 80 80">
+          <circle class="ring-bg" cx="40" cy="40" r="35"/>
+          <circle class="ring-fill" id="ringFill" cx="40" cy="40" r="35"/>
+        </svg>
+        <div class="ring-label">
+          <div class="ring-pct" id="prValue">—%</div>
+          <div class="ring-sub">PR</div>
+        </div>
+      </div>
+      <div class="perf-info">
+        <h3 id="perfLabel">—</h3>
+        <p id="perfDesc">—</p>
+      </div>
+    </div>
+
+    <p class="section-label" id="lbl-daily">Daily Summary</p>
+    <div class="summary-card">
+      <div class="summary-grid">
+        <div class="summary-item">
+          <div class="summary-val" style="color:var(--green)" id="kwhToday">—</div>
+          <div class="summary-lbl" data-en="kWh today" data-sw="kWh leo">kWh today</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-val" style="color:var(--sun)" id="peakPower">—</div>
+          <div class="summary-lbl" data-en="W peak" data-sw="W kilele">W peak</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-val" style="color:var(--blue)" id="irradiance">—</div>
+          <div class="summary-lbl" data-en="W/m² irrad." data-sw="W/m² mwanga">W/m² irrad.</div>
+        </div>
+      </div>
+    </div>
+    <div class="last-updated" id="liveLastTime">Last updated: —</div>
+  </div>
+
+  <!-- ── CHARTS PAGE ── -->
+  <div class="page" id="page-charts">
+    <div class="chart-card">
+      <div class="chart-tabs">
+        <button class="chart-tab active" onclick="showChartTab('power',this)" data-en="Power" data-sw="Nguvu">Power</button>
+        <button class="chart-tab" onclick="showChartTab('energy',this)" data-en="Energy" data-sw="Nishati">Energy</button>
+        <button class="chart-tab" onclick="showChartTab('iv',this)">I-V Curve</button>
+      </div>
+      <div class="chart-pane active" id="pane-power">
+        <p style="font-size:10px;color:var(--text3);margin-bottom:4px" data-en="Power output — last 12 readings (W)" data-sw="Nguvu — masomeo 12 ya mwisho (W)">Power output — last 12 readings (W)</p>
+        <canvas id="powerChart" height="130"></canvas>
+      </div>
+      <div class="chart-pane" id="pane-energy">
+        <p style="font-size:10px;color:var(--text3);margin-bottom:4px" data-en="Daily energy — last 12 readings (kWh)" data-sw="Nishati ya siku — masomeo 12 (kWh)">Daily energy — last 12 readings (kWh)</p>
+        <canvas id="energyChart" height="130"></canvas>
+      </div>
+      <div class="chart-pane" id="pane-iv">
+        <p style="font-size:10px;color:var(--text3);margin-bottom:4px">I-V Curve — Solarborn SLB36M9-120W</p>
+        <canvas id="ivChart" height="130"></canvas>
+      </div>
+    </div>
+    <div class="last-updated" id="chartsLastTime">Last updated: —</div>
+  </div>
+
+  <!-- ── FAULTS PAGE ── -->
+  <div class="page" id="page-faults">
+    <p class="section-label" data-en="System Diagnostics" data-sw="Uchunguzi wa Mfumo">System Diagnostics</p>
+    <div class="fault-card"><div class="fault-dot ok" id="fd-volt"></div><div><div class="fault-name" data-en="Voltage Level" data-sw="Kiwango cha Volti">Voltage Level</div><div class="fault-status" id="fs-volt">—</div></div></div>
+    <div class="fault-card"><div class="fault-dot ok" id="fd-curr"></div><div><div class="fault-name" data-en="Current Flow" data-sw="Mkondo wa Umeme">Current Flow</div><div class="fault-status" id="fs-curr">—</div></div></div>
+    <div class="fault-card"><div class="fault-dot ok" id="fd-pwr"></div><div><div class="fault-name" data-en="Power Output" data-sw="Uzalishaji wa Nguvu">Power Output</div><div class="fault-status" id="fs-pwr">—</div></div></div>
+    <div class="fault-card"><div class="fault-dot warn" id="fd-temp"></div><div><div class="fault-name" data-en="Panel Temperature" data-sw="Joto la Panel">Panel Temperature</div><div class="fault-status" id="fs-temp">—</div></div></div>
+    <div class="fault-card"><div class="fault-dot ok" id="fd-irr"></div><div><div class="fault-name" data-en="Irradiance / Sunlight" data-sw="Mwanga wa Jua">Irradiance / Sunlight</div><div class="fault-status" id="fs-irr">—</div></div></div>
+    <div class="fault-card"><div class="fault-dot ok" id="fd-data"></div><div><div class="fault-name" data-en="Data Signal" data-sw="Ishara ya Data">Data Signal</div><div class="fault-status" id="fs-data">—</div></div></div>
+  </div>
+
+  <!-- ── TIPS PAGE ── -->
+  <div class="page" id="page-tips">
+    <p class="section-label" data-en="Optimization Tips" data-sw="Vidokezo vya Kuboresha">Optimization Tips</p>
+    <div class="tip-card"><div class="tip-icon">☀️</div><div><div class="tip-title" data-en="Peak Hours in Arusha" data-sw="Masaa ya Kilele Arusha">Peak Hours in Arusha</div><div class="tip-text" data-en="Best solar production: 9 AM – 3 PM. Run heavy loads (charging, pumps) during this window for maximum savings." data-sw="Uzalishaji bora: saa 3 – 9 alasiri. Tumia vifaa vizito wakati huu kwa akiba ya juu.">Best solar production: 9 AM – 3 PM. Run heavy loads (charging, pumps) during this window for maximum savings.</div></div></div>
+    <div class="tip-card"><div class="tip-icon">🧹</div><div><div class="tip-title" data-en="Clean Your Panel" data-sw="Safisha Panel Yako">Clean Your Panel</div><div class="tip-text" data-en="Dust can reduce output by up to 20%. Wipe with a damp cloth every 2 weeks, especially in dry season." data-sw="Vumbi linaweza kupunguza nguvu hadi 20%. Futa kwa kitambaa chenye unyevu kila wiki 2.">Dust can reduce output by up to 20%. Wipe with a damp cloth every 2 weeks, especially in dry season.</div></div></div>
+    <div class="tip-card"><div class="tip-icon">🌡️</div><div><div class="tip-title" data-en="Temperature Management" data-sw="Udhibiti wa Joto">Temperature Management</div><div class="tip-text" data-en="Ensure 10–15 cm air gap below the panel for cooling. Output drops ~0.5% per °C above 25°C." data-sw="Hakikisha pengo la hewa la sm 10–15 chini ya panel. Nguvu hupungua ~0.5% kwa kila °C zaidi ya 25°C.">Ensure 10–15 cm air gap below the panel for cooling. Output drops ~0.5% per °C above 25°C.</div></div></div>
+    <div class="tip-card"><div class="tip-icon">📐</div><div><div class="tip-title" data-en="Optimal Panel Angle" data-sw="Pembe Bora ya Panel">Optimal Panel Angle</div><div class="tip-text" data-en="At Arusha's latitude (−3°), tilt your panel 5–10° facing north for maximum annual energy yield." data-sw="Katika latitudo ya Arusha (−3°), inamisha panel yako 5–10° ikiwa inaelekea kaskazini.">At Arusha's latitude (−3°), tilt your panel 5–10° facing north for maximum annual energy yield.</div></div></div>
+    <div class="tip-card"><div class="tip-icon">🔋</div><div><div class="tip-title" data-en="Battery Health" data-sw="Afya ya Betri">Battery Health</div><div class="tip-text" data-en="Avoid draining battery below 50% regularly. This can more than double your battery's lifespan." data-sw="Epuka kumalizisha betri chini ya 50%. Hii inaweza kuongeza mara mbili maisha ya betri yako.">Avoid draining battery below 50% regularly. This can more than double your battery's lifespan.</div></div></div>
+    <div class="tip-card"><div class="tip-icon">🔌</div><div><div class="tip-title" data-en="Check Connections Monthly" data-sw="Kagua Miunganiko Kila Mwezi">Check Connections Monthly</div><div class="tip-text" data-en="Loose MC4 connectors and corroded terminals are the leading cause of open-circuit faults. Inspect monthly." data-sw="Viunganiko vikilegelea na terminals zilizokusurika ni sababu kuu ya makosa. Kagua kila mwezi.">Loose MC4 connectors and corroded terminals are the leading cause of open-circuit faults. Inspect monthly.</div></div></div>
+  </div>
+
+  <!-- ── HISTORY PAGE ── -->
+  <div class="page" id="page-history">
+    <p class="section-label" data-en="Recent Readings — last 10 entries" data-sw="Masomeo ya Hivi Karibuni — maingizo 10 ya mwisho">Recent Readings — last 10 entries</p>
+    <div class="history-wrap">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th data-en="Time" data-sw="Saa">Time</th>
+            <th>V</th><th>A</th><th>W</th><th>°C</th>
+            <th data-en="Status" data-sw="Hali">Status</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody">
+          <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px" data-en="Waiting for data..." data-sw="Inasubiri data...">Waiting for data...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── SETTINGS PAGE ── -->
+  <div class="page" id="page-settings">
+    <p class="section-label" data-en="Alert Thresholds" data-sw="Mipaka ya Tahadhari">Alert Thresholds</p>
+    <div class="setting-card">
+      <div class="setting-row">
+        <div><div class="setting-label" data-en="Max Temperature" data-sw="Joto la Juu">Max Temperature</div><div class="setting-sub" data-en="Alert when panel exceeds this °C" data-sw="Tahadhari inapozidi °C hii">Alert when panel exceeds this °C</div></div>
+        <input class="setting-input" id="set-temp" type="number" value="60"/>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label" data-en="Min Voltage" data-sw="Volti ya Chini">Min Voltage</div><div class="setting-sub" data-en="Alert when panel drops below this V" data-sw="Tahadhari inaposhuka chini ya V hii">Alert when panel drops below this V</div></div>
+        <input class="setting-input" id="set-volt-low" type="number" value="10.5"/>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label" data-en="Max Voltage" data-sw="Volti ya Juu">Max Voltage</div><div class="setting-sub" data-en="Alert when panel exceeds this V" data-sw="Tahadhari inapozidi V hii">Alert when panel exceeds this V</div></div>
+        <input class="setting-input" id="set-volt-high" type="number" value="24.5"/>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label" data-en="Max Current" data-sw="Mkondo wa Juu">Max Current</div><div class="setting-sub" data-en="Alert when current exceeds this A" data-sw="Tahadhari inapozidi A hii">Alert when current exceeds this A</div></div>
+        <input class="setting-input" id="set-curr-high" type="number" value="7.33"/>
+      </div>
+      <button class="save-btn" onclick="saveSettings()" data-en="Save Settings" data-sw="Hifadhi Mipangilio">Save Settings</button>
+    </div>
+
+    <p class="section-label" data-en="App Settings" data-sw="Mipangilio ya Programu">App Settings</p>
+    <div class="setting-card">
+      <div class="setting-row">
+        <div><div class="setting-label" data-en="Refresh Rate" data-sw="Kasi ya Kusasisha">Refresh Rate</div><div class="setting-sub" data-en="Seconds between data updates" data-sw="Sekunde kati ya masasisho">Seconds between data updates</div></div>
+        <input class="setting-input" id="set-refresh" type="number" value="20" min="15" max="60"/>
+      </div>
+      <button class="save-btn" onclick="saveSettings()" data-en="Save Settings" data-sw="Hifadhi Mipangilio">Save Settings</button>
+    </div>
+
+    <p class="section-label" data-en="About This Project" data-sw="Kuhusu Mradi Huu">About This Project</p>
+
+    <!-- HERO CARD -->
+    <div class="about-hero">
+      <div class="college">Arusha Technical College (ATC)</div>
+      <h2>Residential Active Solar PV Monitoring System</h2>
+      <div class="module">Module: REU 08105 — Renewable Energy Project 1</div>
+      <div class="badge-row">
+        <span class="abadge">📅 March 2026</span>
+        <span class="abadge">☀️ 120W Panel</span>
+        <span class="abadge">📱 v3.0 PWA</span>
+      </div>
+    </div>
+
+    <!-- STUDENT 1 -->
+    <div class="student-card">
+      <div class="student-avatar" style="background:linear-gradient(135deg,#f59e0b,#ea580c)">ET</div>
+      <div>
+        <div class="student-name">Elisha Michael Temu</div>
+        <div class="student-role" data-en="Lead Developer · Hardware & Software" data-sw="Msanidi Mkuu · Vifaa na Programu">Lead Developer · Hardware & Software</div>
+        <div class="student-contact">
+          <div class="contact-row">📞 <a href="tel:+255656604580">+255 656 604 580</a></div>
+          <div class="contact-row">💻 <a href="https://github.com/elishatemu901-lab" target="_blank">github.com/elishatemu901-lab</a></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STUDENT 2 -->
+    <div class="student-card">
+      <div class="student-avatar" style="background:linear-gradient(135deg,#2563eb,#7c3aed)">LN</div>
+      <div>
+        <div class="student-name">Laurent Hijer Ngoitanile</div>
+        <div class="student-role" data-en="Co-Developer · System Design & Testing" data-sw="Msanidi Mwenza · Muundo na Majaribio">Co-Developer · System Design & Testing</div>
+        <div class="student-contact">
+          <div class="contact-row">🏫 <span data-en="Arusha Technical College" data-sw="Chuo cha Ufundi Arusha">Arusha Technical College</span></div>
+          <div class="contact-row">📚 <span data-en="Renewable Energy Dept." data-sw="Idara ya Nishati Mbadala">Renewable Energy Dept.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUPERVISOR -->
+    <div class="supervisor-card">
+      <div class="icon">👨‍🏫</div>
+      <div>
+        <h4 data-en="Project Supervised by" data-sw="Mradi Unaosimamiwa na">Project Supervised by</h4>
+        <p data-en="Renewable Energy Department — ATC, Arusha, Tanzania" data-sw="Idara ya Nishati Mbadala — ATC, Arusha, Tanzania">Renewable Energy Department — ATC, Arusha, Tanzania</p>
+      </div>
+    </div>
+
+    <!-- PANEL SPECS -->
+    <div class="project-card">
+      <h4>⚡ <span data-en="Panel Specifications" data-sw="Vipimo vya Panel">Panel Specifications</span></h4>
+      <div class="spec-row"><span class="spec-key" data-en="Model" data-sw="Modeli">Model</span><span class="spec-val">Solarborn SLB36M9-120W</span></div>
+      <div class="spec-row"><span class="spec-key" data-en="Type" data-sw="Aina">Type</span><span class="spec-val" data-en="Monocrystalline" data-sw="Monocrystalline">Monocrystalline</span></div>
+      <div class="spec-row"><span class="spec-key">Pmax</span><span class="spec-val">120 W</span></div>
+      <div class="spec-row"><span class="spec-key">Voc</span><span class="spec-val">22.25 V</span></div>
+      <div class="spec-row"><span class="spec-key">Vmp</span><span class="spec-val">19.06 V</span></div>
+      <div class="spec-row"><span class="spec-key">Isc</span><span class="spec-val">6.66 A</span></div>
+      <div class="spec-row"><span class="spec-key">Imp</span><span class="spec-val">6.30 A</span></div>
+      <div class="spec-row"><span class="spec-key">NOCT</span><span class="spec-val">45 ± 2 °C</span></div>
+      <div class="spec-row"><span class="spec-key" data-en="Fuse Rating" data-sw="Ukadiriaji wa Fuse">Fuse Rating</span><span class="spec-val">10 A</span></div>
+    </div>
+
+    <!-- HARDWARE SPECS -->
+    <div class="project-card">
+      <h4>🔧 <span data-en="Hardware Used" data-sw="Vifaa Vilivyotumiwa">Hardware Used</span></h4>
+      <div class="spec-row"><span class="spec-key">Microcontroller</span><span class="spec-val">Arduino Uno R4</span></div>
+      <div class="spec-row"><span class="spec-key" data-en="Current Sensor" data-sw="Sensori ya Mkondo">Current Sensor</span><span class="spec-val">ACS712-20A</span></div>
+      <div class="spec-row"><span class="spec-key" data-en="Voltage" data-sw="Volti">Voltage</span><span class="spec-val">Divider R1=30kΩ R2=7.5kΩ</span></div>
+      <div class="spec-row"><span class="spec-key" data-en="Temperature" data-sw="Joto">Temperature</span><span class="spec-val">NTC Thermistor 10kΩ</span></div>
+      <div class="spec-row"><span class="spec-key" data-en="Irradiance" data-sw="Mwanga">Irradiance</span><span class="spec-val">LDR Module</span></div>
+      <div class="spec-row"><span class="spec-key" data-en="Display" data-sw="Onyesho">Display</span><span class="spec-val">I2C LCD 16×2</span></div>
+      <div class="spec-row"><span class="spec-key">GSM Module</span><span class="spec-val">SIM900</span></div>
+      <div class="spec-row"><span class="spec-key" data-en="Cloud Platform" data-sw="Jukwaa la Wingu">Cloud Platform</span><span class="spec-val">ThingSpeak</span></div>
+      <div class="spec-row"><span class="spec-key">Channel ID</span><span class="spec-val">3405974</span></div>
+    </div>
+
+    <!-- SMS ALERT -->
+    <div class="project-card">
+      <h4>📩 <span data-en="SMS Alert Contact" data-sw="Mawasiliano ya Tahadhari ya SMS">SMS Alert Contact</span></h4>
+      <div class="spec-row">
+        <span class="spec-key" data-en="Alert Number" data-sw="Nambari ya Tahadhari">Alert Number</span>
+        <a href="tel:+255656604580" style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--blue);text-decoration:none">+255 656 604 580</a>
+      </div>
+      <div class="spec-row">
+        <span class="spec-key" data-en="SMS sent on" data-sw="SMS inatumwa kwa">SMS sent on</span>
+        <span class="spec-val" data-en="Fault detection" data-sw="Kugunduliwa kwa hitilafu">Fault detection</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-key" data-en="SMS cooldown" data-sw="Muda wa kupumzika">SMS cooldown</span>
+        <span class="spec-val" data-en="10 minutes" data-sw="Dakika 10">10 minutes</span>
+      </div>
+    </div>
+
+  </div><!-- end page-settings -->
+
+</div><!-- content -->
+
+<!-- BOTTOM NAV -->
+<nav>
+  <button class="nav-btn active" onclick="showPage('live',this)">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+    <span data-en="Live" data-sw="Hai">Live</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('charts',this)">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.8-2.8L7 14"/></svg>
+    <span data-en="Charts" data-sw="Grafu">Charts</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('faults',this)">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <span data-en="Faults" data-sw="Hitilafu">Faults</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('history',this)">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    <span data-en="History" data-sw="Historia">History</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('tips',this)">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+    <span data-en="Tips" data-sw="Vidokezo">Tips</span>
+  </button>
+  <button class="nav-btn" onclick="showPage('settings',this)">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    <span data-en="Settings" data-sw="Mipangilio">Settings</span>
+  </button>
+</nav>
+
+</div><!-- app -->
+
+<script>
+// ── LANGUAGE ─────────────────────────────────────
+let lang = localStorage.getItem('lang') || 'en';
+function applyLang() {
+  document.querySelectorAll('[data-en]').forEach(el => {
+    el.textContent = lang === 'sw' ? (el.dataset.sw || el.dataset.en) : el.dataset.en;
+  });
+  document.getElementById('langBtn').textContent = lang === 'en' ? 'SW' : 'EN';
+}
+function toggleLang() {
+  lang = lang === 'en' ? 'sw' : 'en';
+  localStorage.setItem('lang', lang);
+  applyLang();
+}
+applyLang();
+
+// ── THRESHOLDS (user-adjustable) ─────────────────
+let T = {
+  tempMax: parseFloat(localStorage.getItem('set-temp')) || 60,
+  voltLow: parseFloat(localStorage.getItem('set-volt-low')) || 10.5,
+  voltHigh: parseFloat(localStorage.getItem('set-volt-high')) || 24.5,
+  currHigh: parseFloat(localStorage.getItem('set-curr-high')) || 7.33,
+  refresh: parseInt(localStorage.getItem('set-refresh')) || 20
+};
+function loadSettingsUI() {
+  document.getElementById('set-temp').value = T.tempMax;
+  document.getElementById('set-volt-low').value = T.voltLow;
+  document.getElementById('set-volt-high').value = T.voltHigh;
+  document.getElementById('set-curr-high').value = T.currHigh;
+  document.getElementById('set-refresh').value = T.refresh;
+}
+function saveSettings() {
+  T.tempMax = parseFloat(document.getElementById('set-temp').value);
+  T.voltLow = parseFloat(document.getElementById('set-volt-low').value);
+  T.voltHigh = parseFloat(document.getElementById('set-volt-high').value);
+  T.currHigh = parseFloat(document.getElementById('set-curr-high').value);
+  T.refresh = parseInt(document.getElementById('set-refresh').value);
+  localStorage.setItem('set-temp', T.tempMax);
+  localStorage.setItem('set-volt-low', T.voltLow);
+  localStorage.setItem('set-volt-high', T.voltHigh);
+  localStorage.setItem('set-curr-high', T.currHigh);
+  localStorage.setItem('set-refresh', T.refresh);
+  const btn = document.querySelector('.save-btn');
+  btn.textContent = lang === 'sw' ? 'Imehifadhiwa ✓' : 'Saved ✓';
+  btn.style.background = '#16a34a';
+  setTimeout(() => { btn.textContent = lang === 'sw' ? 'Hifadhi Mipangilio' : 'Save Settings'; btn.style.background = ''; }, 2000);
+}
+loadSettingsUI();
+
+// ── NAVIGATION ───────────────────────────────────
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'charts') setTimeout(() => {
+    drawChart(chartData); drawEnergyChart(energyData); drawIVChart(lastV, lastA);
+  }, 50);
+}
+
+// ── CHART TAB ────────────────────────────────────
+function showChartTab(name, btn) {
+  document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.chart-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('pane-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'power') drawChart(chartData);
+  if (name === 'energy') drawEnergyChart(energyData);
+  if (name === 'iv') drawIVChart(lastV, lastA);
+}
+
+// ── PANEL SPECS ───────────────────────────────────
+const VOC=22.25, ISC=6.66, VMP=19.06, IMP=6.30, PMAX=120;
+
+// ── CHART DATA ────────────────────────────────────
+let chartData = Array(12).fill(0);
+let energyData = Array(12).fill(0);
+let lastV = VMP, lastA = IMP;
+let historyRows = [];
+let peakPowerVal = 0;
+
+// ── DRAW POWER LINE CHART ─────────────────────────
+function drawChart(data) {
+  const canvas = document.getElementById('powerChart');
+  const w = canvas.offsetWidth || 300, h = 130;
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, w, h);
+  const pad = {t:10,r:10,b:22,l:32};
+  const cw = w-pad.l-pad.r, ch = h-pad.t-pad.b;
+  const maxV = Math.max(PMAX, ...data) * 1.1;
+
+  ctx.strokeStyle='#e2e8f0'; ctx.lineWidth=1;
+  [0.25,0.5,0.75,1].forEach(p=>{
+    const y=pad.t+ch-p*ch;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();
+    ctx.fillStyle='#94a3b8';ctx.font='9px JetBrains Mono';
+    ctx.fillText(Math.round(maxV*p)+'W',0,y+3);
+  });
+
+  const pts = data.map((v,i)=>({x:pad.l+i*(cw/(data.length-1)),y:pad.t+ch-(v/maxV)*ch}));
+  const grad=ctx.createLinearGradient(0,pad.t,0,h);
+  grad.addColorStop(0,'rgba(245,158,11,0.3)');grad.addColorStop(1,'rgba(245,158,11,0)');
+  ctx.beginPath();ctx.moveTo(pts[0].x,pad.t+ch);
+  pts.forEach(p=>ctx.lineTo(p.x,p.y));
+  ctx.lineTo(pts[pts.length-1].x,pad.t+ch);ctx.closePath();
+  ctx.fillStyle=grad;ctx.fill();
+
+  ctx.beginPath();ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;
+  pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+  ctx.stroke();
+
+  const last=pts[pts.length-1];
+  ctx.beginPath();ctx.arc(last.x,last.y,4,0,Math.PI*2);
+  ctx.fillStyle='#f59e0b';ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+}
+
+// ── DRAW ENERGY BAR CHART ─────────────────────────
+function drawEnergyChart(data) {
+  const canvas = document.getElementById('energyChart');
+  const w = canvas.offsetWidth || 300, h = 130;
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,w,h);
+  const pad={t:10,r:10,b:22,l:40};
+  const cw=w-pad.l-pad.r, ch=h-pad.t-pad.b;
+  const maxV=Math.max(0.001,...data)*1.2;
+
+  ctx.strokeStyle='#e2e8f0';ctx.lineWidth=1;
+  [0.25,0.5,0.75,1].forEach(p=>{
+    const y=pad.t+ch-p*ch;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();
+    ctx.fillStyle='#94a3b8';ctx.font='8px JetBrains Mono';
+    ctx.fillText((maxV*p).toFixed(3),0,y+3);
+  });
+
+  const bw=(cw/data.length)-4;
+  data.forEach((v,i)=>{
+    const x=pad.l+i*(cw/data.length)+2;
+    const bh=(v/maxV)*ch;
+    const y=pad.t+ch-bh;
+    const grad=ctx.createLinearGradient(0,y,0,pad.t+ch);
+    grad.addColorStop(0,'#16a34a');grad.addColorStop(1,'rgba(22,163,74,0.2)');
+    ctx.fillStyle=grad;
+    ctx.beginPath();ctx.roundRect(x,y,bw,bh,3);ctx.fill();
+  });
+}
+
+// ── DRAW I-V CURVE ────────────────────────────────
+function drawIVChart(opV, opA) {
+  const canvas=document.getElementById('ivChart');
+  const w=canvas.offsetWidth||300,h=130;
+  canvas.width=w;canvas.height=h;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,w,h);
+  const pad={t:10,r:10,b:22,l:30};
+  const cw=w-pad.l-pad.r,ch=h-pad.t-pad.b;
+  const toX=v=>pad.l+(v/VOC)*cw;
+  const toY=i=>pad.t+ch-(i/ISC)*ch;
+
+  ctx.strokeStyle='#e2e8f0';ctx.lineWidth=1;
+  [0.25,0.5,0.75,1].forEach(p=>{
+    const y=pad.t+ch-p*ch;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();
+    ctx.fillStyle='#94a3b8';ctx.font='8px JetBrains Mono';
+    ctx.fillText((ISC*p).toFixed(1)+'A',0,y+3);
+  });
+
+  const n=60,pts=[];
+  for(let k=0;k<=n;k++){
+    const v=(VOC*k)/n;
+    let i=v<VMP?ISC-(ISC-IMP)*Math.pow(v/VMP,3):IMP*(1-Math.pow((v-VMP)/(VOC-VMP),1.6));
+    i=Math.max(0,Math.min(ISC,i));
+    pts.push({x:toX(v),y:toY(i)});
+  }
+
+  ctx.beginPath();ctx.strokeStyle='#2563eb';ctx.lineWidth=2;
+  pts.forEach((p,k)=>k===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+  ctx.stroke();
+
+  // MPP
+  ctx.beginPath();ctx.arc(toX(VMP),toY(IMP),5,0,Math.PI*2);
+  ctx.fillStyle='#16a34a';ctx.fill();
+  ctx.fillStyle='#16a34a';ctx.font='bold 9px Inter';
+  ctx.fillText('MPP',toX(VMP)+7,toY(IMP)-3);
+
+  // Operating point
+  const ox=toX(Math.min(opV,VOC)),oy=toY(Math.min(opA,ISC));
+  ctx.beginPath();ctx.arc(ox,oy,5,0,Math.PI*2);
+  ctx.fillStyle='#f59e0b';ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+
+  // Axis labels
+  ctx.fillStyle='#94a3b8';ctx.font='8px JetBrains Mono';
+  ctx.fillText('0',pad.l-8,h-5);
+  ctx.fillText(VOC+'V',w-pad.r-20,h-5);
+}
+
+// ── THINGSPEAK ────────────────────────────────────
+const TS_CHANNEL = '3405974';
+const TS_READ_KEY = 'HSC594DNO46ZFNYL';
+let refreshInterval;
+
+const faultMap = {
+  0:{en:'System normal — all checks passed',sw:'Mfumo wa kawaida — ukaguzi wote umepita',ok:true},
+  1:{en:'SHORT CIRCUIT detected!',sw:'MZUNGUKO MFUPI umegunduliwa!',ok:false},
+  2:{en:'OPEN CIRCUIT detected!',sw:'MZUNGUKO WAZI umegunduliwa!',ok:false},
+  3:{en:'Partial shading detected',sw:'Kivuli kidogo kimegunduliwa',ok:false},
+  5:{en:'GROUND FAULT detected!',sw:'KASORO YA ARDHI imegunduliwa!',ok:false},
+  6:{en:'Inverter fault detected',sw:'Kasoro ya inverter imegunduliwa',ok:false}
+};
+
+async function fetchData() {
+  try {
+    const url = `https://api.thingspeak.com/channels/${TS_CHANNEL}/feeds.json?api_key=${TS_READ_KEY}&results=12`;
+    const res = await fetch(url, {cache:'no-store'});
+    if (!res.ok) throw new Error('Network error');
+    const data = await res.json();
+    const feeds = data.feeds || [];
+    if (!feeds.length) { setOffline(true); return; }
+    setOffline(false);
+    const latest = feeds[feeds.length-1];
+    processData(latest, feeds);
+  } catch(e) {
+    setOffline(true);
+  }
+}
+
+function processData(latest, feeds) {
+  const v   = parseFloat(latest.field1) || 0;
+  const a   = parseFloat(latest.field2) || 0;
+  const w   = parseFloat(latest.field3) || 0;
+  const t   = parseFloat(latest.field4) || 0;
+  const irr = parseFloat(latest.field5) || 0;
+  const pr  = parseFloat(latest.field6) || 0;
+  const kwh = parseFloat(latest.field7) || 0;
+  const fault = parseInt(latest.field8) || 0;
+  const ts  = new Date(latest.created_at);
+  lastV = v; lastA = a;
+
+  // Peak
+  if (w > peakPowerVal) peakPowerVal = w;
+
+  // Update metric cards
+  document.getElementById('voltage').innerHTML = v.toFixed(2)+'<span class="metric-unit">V</span>';
+  document.getElementById('current').innerHTML = a.toFixed(2)+'<span class="metric-unit">A</span>';
+  document.getElementById('power').innerHTML = w.toFixed(1)+'<span class="metric-unit">W</span>';
+  document.getElementById('temp').innerHTML = t.toFixed(1)+'<span class="metric-unit">°C</span>';
+  document.getElementById('voltageBar').style.width = Math.min(100,(v/VOC)*100)+'%';
+  document.getElementById('currentBar').style.width = Math.min(100,(a/ISC)*100)+'%';
+  document.getElementById('powerBar').style.width = Math.min(100,(w/PMAX)*100)+'%';
+  document.getElementById('tempBar').style.width = Math.min(100,(t/60)*100)+'%';
+
+  // Animate, trend, sparkline
+  ['voltage','current','power','temp'].forEach(animateUpdate);
+  updateTrends(v, a, w, t);
+  updateSparklines(v, a, w, t);
+  lastDataTime = Date.now();
+  updateSignal();
+  triggerVibration(fault);
+
+  // Performance ring
+  const prC = Math.max(0,Math.min(100,pr));
+  document.getElementById('ringFill').style.strokeDashoffset = 220*(1-prC/100);
+  document.getElementById('prValue').textContent = Math.round(prC)+'%';
+  const perfTexts = prC>=80
+    ? {en:'Excellent performance',sw:'Utendaji bora',desc_en:'Panel producing at rated capacity',desc_sw:'Panel inazalisha kwa uwezo wake kamili'}
+    : prC>=60
+    ? {en:'Good performance',sw:'Utendaji mzuri',desc_en:'Panel performing normally',desc_sw:'Panel inafanya kazi kawaida'}
+    : {en:'Low performance',sw:'Utendaji mdogo',desc_en:'Check for shading or dust',desc_sw:'Angalia vivuli au vumbi'};
+  document.getElementById('perfLabel').textContent = lang==='sw'?perfTexts.sw:perfTexts.en;
+  document.getElementById('perfDesc').textContent = lang==='sw'?perfTexts.desc_sw:perfTexts.desc_en;
+
+  // Summary
+  document.getElementById('kwhToday').textContent = kwh.toFixed(4);
+  document.getElementById('peakPower').textContent = peakPowerVal.toFixed(1);
+  document.getElementById('irradiance').textContent = irr.toFixed(0);
+
+  // Fault / status
+  const fi = faultMap[fault] || faultMap[0];
+  const pill = document.getElementById('statusPill');
+  const statusT = document.getElementById('statusText');
+  if (fi.ok) { pill.className='status-pill'; statusT.textContent=lang==='sw'?'Hai':'Live'; }
+  else { pill.className='status-pill fault'; statusT.textContent=lang==='sw'?'Hitilafu':'Fault'; }
+  const banner = document.getElementById('alertBanner');
+  document.getElementById('alertMsg').textContent = lang==='sw'?fi.sw:fi.en;
+  banner.className = fi.ok ? 'alert-banner' : 'alert-banner show';
+
+  // Faults page
+  setFault('volt', v<T.voltLow||v>T.voltHigh?'err':'ok', `${v.toFixed(2)}V (${lang==='sw'?'mipaka':'range'}: ${T.voltLow}–${T.voltHigh}V)`);
+  setFault('curr', a>T.currHigh?'err':'ok', `${a.toFixed(2)}A (${lang==='sw'?'juu':'max'}: ${T.currHigh}A)`);
+  setFault('pwr', w<5&&v>5?'warn':'ok', `${w.toFixed(1)}W ${lang==='sw'?'ya':'of'} ${PMAX}W`);
+  setFault('temp', t>T.tempMax?'err':t>47?'warn':'ok', `${t.toFixed(1)}°C (${lang==='sw'?'juu':'max'}: ${T.tempMax}°C)`);
+  setFault('irr', irr<50?'warn':'ok', `${irr.toFixed(0)} W/m²`);
+  setFault('data', 'ok', `${lang==='sw'?'Imesasishwa':'Updated'} ${ts.toLocaleTimeString()}`);
+
+  // Charts data
+  chartData = feeds.map(f=>parseFloat(f.field3)||0);
+  energyData = feeds.map(f=>parseFloat(f.field7)||0);
+
+  // Redraw active chart
+  const activePaneId = [...document.querySelectorAll('.chart-pane')].find(p=>p.classList.contains('active'))?.id;
+  if (activePaneId==='pane-power') drawChart(chartData);
+  else if (activePaneId==='pane-energy') drawEnergyChart(energyData);
+  else if (activePaneId==='pane-iv') drawIVChart(v,a);
+
+  // History
+  addHistoryRow(ts, v, a, w, t, fi.ok);
+
+  // Timestamp
+  const timeStr = ts.toLocaleTimeString();
+  document.getElementById('liveLastTime').textContent = (lang==='sw'?'Imesasishwa':'Last updated')+': '+timeStr;
+  document.getElementById('chartsLastTime').textContent = (lang==='sw'?'Imesasishwa':'Last updated')+': '+timeStr;
+}
+
+function setFault(id, state, msg) {
+  const dot = document.getElementById('fd-'+id);
+  dot.className = 'fault-dot '+state;
+  document.getElementById('fs-'+id).textContent = msg;
+}
+
+function addHistoryRow(ts, v, a, w, t, ok) {
+  historyRows.unshift({ts,v,a,w,t,ok});
+  if (historyRows.length > 10) historyRows.pop();
+  const tbody = document.getElementById('historyBody');
+  tbody.innerHTML = historyRows.map(r=>`
+    <tr>
+      <td>${r.ts.toLocaleTimeString()}</td>
+      <td>${r.v.toFixed(1)}</td>
+      <td>${r.a.toFixed(2)}</td>
+      <td>${r.w.toFixed(1)}</td>
+      <td>${r.t.toFixed(1)}</td>
+      <td><span class="badge ${r.ok?'ok':'fault'}">${r.ok?(lang==='sw'?'Sawa':'OK'):(lang==='sw'?'Hitilafu':'Fault')}</span></td>
+    </tr>`).join('');
+}
+
+function setOffline(offline) {
+  document.getElementById('offlineStrip').className = offline ? 'offline-strip show' : 'offline-strip';
+  if (offline) {
+    document.getElementById('statusPill').className = 'status-pill offline';
+    document.getElementById('statusText').textContent = lang==='sw'?'Nje ya Mtandao':'Offline';
+  }
+}
+
+// ── DARK MODE ─────────────────────────────────────
+let darkMode = localStorage.getItem('darkMode') === 'true';
+function applyDark() {
+  document.body.classList.toggle('dark', darkMode);
+  document.getElementById('darkBtn').textContent = darkMode ? '☀️' : '🌙';
+}
+function toggleDark() {
+  darkMode = !darkMode;
+  localStorage.setItem('darkMode', darkMode);
+  applyDark();
+}
+applyDark();
+
+// ── LIVE CLOCK + GREETING ─────────────────────────
+function updateClock() {
+  const now = new Date();
+  const h = now.getHours();
+  document.getElementById('liveClock').textContent = now.toLocaleTimeString();
+  let icon, greetEN, greetSW;
+  if (h < 5)  { icon='🌙'; greetEN='Good night, Elisha!';    greetSW='Usiku mwema, Elisha!'; }
+  else if (h < 12) { icon='🌅'; greetEN='Good morning, Elisha!'; greetSW='Habari za asubuhi, Elisha!'; }
+  else if (h < 17) { icon='☀️'; greetEN='Good afternoon, Elisha!'; greetSW='Habari za mchana, Elisha!'; }
+  else { icon='🌇'; greetEN='Good evening, Elisha!'; greetSW='Habari za jioni, Elisha!'; }
+  document.getElementById('greetIcon').textContent = icon;
+  document.getElementById('greetText').textContent = lang === 'sw' ? greetSW : greetEN;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ── SIGNAL STRENGTH ───────────────────────────────
+let lastDataTime = null;
+function updateSignal() {
+  if (!lastDataTime) { setSignal(0); return; }
+  const age = (Date.now() - lastDataTime) / 1000;
+  if (age < 25) setSignal(4);
+  else if (age < 60) setSignal(3);
+  else if (age < 120) setSignal(2);
+  else if (age < 300) setSignal(1);
+  else setSignal(0);
+}
+function setSignal(bars) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('s'+i);
+    if (el) el.classList.toggle('active', i <= bars);
+  }
+}
+setInterval(updateSignal, 5000);
+
+// ── SPARKLINES ────────────────────────────────────
+const sparkHistory = { v:[], a:[], w:[], t:[] };
+const sparkColors = { v:'#2563eb', a:'#16a34a', w:'#f59e0b', t:'#dc2626' };
+
+function drawSparkline(id, data, color) {
+  const canvas = document.getElementById('spark-' + id);
+  if (!canvas) return;
+  const w = canvas.offsetWidth || 120, h = 28;
+  canvas.width = w; canvas.height = h;
+  if (data.length < 2) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, w, h);
+  const min = Math.min(...data), max = Math.max(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => ({
+    x: (i / (data.length - 1)) * w,
+    y: h - 4 - ((v - min) / range) * (h - 8)
+  }));
+  ctx.beginPath();
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+  pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+  ctx.stroke();
+  // last dot
+  const lp = pts[pts.length - 1];
+  ctx.beginPath(); ctx.arc(lp.x, lp.y, 2.5, 0, Math.PI * 2);
+  ctx.fillStyle = color; ctx.fill();
+}
+
+function updateSparklines(v, a, w, t) {
+  const push = (arr, val) => { arr.push(val); if (arr.length > 20) arr.shift(); };
+  push(sparkHistory.v, v); push(sparkHistory.a, a);
+  push(sparkHistory.w, w); push(sparkHistory.t, t);
+  drawSparkline('v', sparkHistory.v, sparkColors.v);
+  drawSparkline('a', sparkHistory.a, sparkColors.a);
+  drawSparkline('w', sparkHistory.w, sparkColors.w);
+  drawSparkline('t', sparkHistory.t, sparkColors.t);
+}
+
+// ── TREND ARROWS ─────────────────────────────────
+let prevVals = {};
+function updateTrends(v, a, w, t) {
+  const vals = { v, a, w, t };
+  ['v','a','w','t'].forEach(k => {
+    const el = document.getElementById('trend-' + k);
+    if (!el || prevVals[k] === undefined) return;
+    const diff = vals[k] - prevVals[k];
+    if (Math.abs(diff) < 0.05) { el.textContent = '→'; el.className = 'trend flat'; }
+    else if (diff > 0) { el.textContent = '↑'; el.className = 'trend up'; }
+    else { el.textContent = '↓'; el.className = 'trend down'; }
+  });
+  prevVals = { v, a, w, t };
+}
+
+// ── ANIMATED NUMBER UPDATE ────────────────────────
+function animateUpdate(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('updated');
+  void el.offsetWidth; // reflow
+  el.classList.add('updated');
+  setTimeout(() => el.classList.remove('updated'), 400);
+}
+
+// ── VIBRATION ON FAULT ────────────────────────────
+let lastFaultCode = 0;
+function triggerVibration(fault) {
+  if (fault !== 0 && fault !== lastFaultCode && 'vibrate' in navigator) {
+    navigator.vibrate([200, 100, 200, 100, 400]);
+  }
+  lastFaultCode = fault;
+}
+
+// ── SERVICE WORKER ────────────────────────────────
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// ── PWA INSTALL ───────────────────────────────────
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();deferredPrompt=e;
+  document.getElementById('installBanner').style.display='flex';
+});
+document.getElementById('installBtn').addEventListener('click',async()=>{
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt=null;
+  document.getElementById('installBanner').style.display='none';
+});
+document.getElementById('dismissBanner').addEventListener('click',()=>{
+  document.getElementById('installBanner').style.display='none';
+});
+
+// ── START ─────────────────────────────────────────
+drawChart(chartData);
+drawEnergyChart(energyData);
+drawIVChart(lastV, lastA);
+fetchData();
+refreshInterval = setInterval(fetchData, T.refresh * 1000);
+</script>
+</body>
+</html>
